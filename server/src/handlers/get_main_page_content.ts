@@ -1,13 +1,29 @@
+import { db } from '../db';
+import { mainPageContentTable } from '../db/schema';
 import { type MainPageContent } from '../schema';
+import { desc } from 'drizzle-orm';
 
-export async function getMainPageContent(): Promise<MainPageContent> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is fetching the main page content, specifically the
-    // bottom left placeholder text. Should return the most recent content or default values.
-    
-    return Promise.resolve({
-        id: 1,
-        bottom_left_text: "Placeholder text at bottom left of the page",
+export const getMainPageContent = async (): Promise<MainPageContent> => {
+  try {
+    // Get the most recent main page content
+    const results = await db.select()
+      .from(mainPageContentTable)
+      .orderBy(desc(mainPageContentTable.created_at))
+      .limit(1)
+      .execute();
+
+    // If no content exists, return default content
+    if (results.length === 0) {
+      return {
+        id: 0,
+        bottom_left_text: "Welcome to the main page",
         created_at: new Date()
-    } as MainPageContent);
-}
+      };
+    }
+
+    return results[0];
+  } catch (error) {
+    console.error('Failed to fetch main page content:', error);
+    throw error;
+  }
+};

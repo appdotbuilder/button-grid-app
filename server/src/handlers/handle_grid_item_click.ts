@@ -1,30 +1,41 @@
+import { db } from '../db';
+import { gridItemsTable } from '../db/schema';
 import { type GridItemClickInput } from '../schema';
 import { sendUdpCommand } from './send_udp_command';
+import { eq } from 'drizzle-orm';
 
 export async function handleGridItemClick(input: GridItemClickInput): Promise<{ success: boolean; message: string; detailPageUrl: string }> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is processing grid item clicks by:
-    // 1. Fetching the grid item to get its UDP command
-    // 2. Sending the UDP command to localhost:5000
-    // 3. Returning navigation information for the detail page
-    
-    // Simulate fetching grid item and getting its UDP command
-    const mockGridItem = {
-        id: input.grid_item_id,
-        udp_command: `img-${input.grid_item_id}`,
-        position: input.grid_item_id
-    };
-    
-    // Send UDP command
+  try {
+    // Fetch the grid item from the database
+    const gridItems = await db.select()
+      .from(gridItemsTable)
+      .where(eq(gridItemsTable.id, input.grid_item_id))
+      .execute();
+
+    if (gridItems.length === 0) {
+      return {
+        success: false,
+        message: `Grid item with ID ${input.grid_item_id} not found`,
+        detailPageUrl: ''
+      };
+    }
+
+    const gridItem = gridItems[0];
+
+    // Send UDP command to the target host
     const udpResult = await sendUdpCommand({
-        command: mockGridItem.udp_command,
-        target_host: 'localhost',
-        target_port: 5000
+      command: gridItem.udp_command,
+      target_host: 'localhost',
+      target_port: 5000
     });
-    
+
     return {
-        success: udpResult.success,
-        message: `Grid item ${input.grid_item_id} clicked. ${udpResult.message}`,
-        detailPageUrl: `/detail/${input.grid_item_id}`
+      success: udpResult.success,
+      message: `Grid item "${gridItem.title}" clicked. ${udpResult.message}`,
+      detailPageUrl: `/detail/${gridItem.id}`
     };
+  } catch (error) {
+    console.error('Grid item click handling failed:', error);
+    throw error;
+  }
 }
